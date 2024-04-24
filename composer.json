@@ -1,0 +1,41 @@
+{
+    "name": "appenzy/toolbox",
+    "description": "Laravel toolbox",
+    "keywords": [
+        "appenzy",
+        "toolbox",
+        "laravel",
+        "octane",
+        "roadrunner"
+    ],
+    "support": {
+        "source": "https://gitlab.appenzy.com/shared-services/composer/toolbox"
+    },
+    "require": {
+        "php": "^8.2 || ^8.3",
+        "laravel/framework": "^10.0",
+        "laravel/octane": "^2.0",
+        "spiral/roadrunner-cli": "^2.5",
+        "spiral/roadrunner-http": "^3.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Appenzy\\Toolbox\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Majid Hadavand",
+            "email": "m.hadavand@appenzy.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Appenzy\\Toolbox\\ToolboxServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
