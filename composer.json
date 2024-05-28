@@ -9,7 +9,7 @@
         "roadrunner"
     ],
     "support": {
-        "source": "https://gitlab.appenzy.com/shared-services/composer/toolbox"
+        "source": "https://gitlab.appenzy.com/boom/composer/toolbox"
     },
     "require": {
         "php": "^8.2 || ^8.3",
