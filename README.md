@@ -2,4 +2,4 @@
 
 ## Installation
 
-`composer require appenzy/toolbox`
+`composer require vanaboom/toolbox`

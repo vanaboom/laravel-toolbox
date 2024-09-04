@@ -1,6 +1,6 @@
 <?php
 
-namespace Appenzy\Toolbox;
+namespace Vanaboom\Toolbox;
 
 use Illuminate\Support\ServiceProvider;
 
