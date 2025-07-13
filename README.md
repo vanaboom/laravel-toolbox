@@ -2,4 +2,4 @@
 
 ## Installation
 
-`composer require vanaboom/toolbox`
+`composer require vanaboom/laravel-toolbox`

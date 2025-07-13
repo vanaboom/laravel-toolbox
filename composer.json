@@ -1,5 +1,5 @@
 {
-    "name": "vanaboom/toolbox",
+    "name": "vanaboom/laravel-toolbox",
     "description": "Laravel toolbox",
     "keywords": [
         "vanaboom",
@@ -9,7 +9,7 @@
         "roadrunner"
     ],
     "support": {
-        "source": "https://github.com/vanaboom/toolbox"
+        "source": "https://github.com/vanaboom/laravel-toolbox"
     },
     "require": {
         "php": "^8.3 || ^8.4",
