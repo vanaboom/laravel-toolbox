@@ -19,6 +19,26 @@ A development toolkit for Laravel applications with built-in Docker scaffolding,
 composer require vanaboom/laravel-toolbox --dev
 ```
 
+Or, for the **first-time setup with Docker** (without Composer installed locally):
+
+```bash
+docker run --rm -it \
+  --add-host=host.docker.internal:host-gateway \
+  -u $(id -u):$(id -g) \
+  -v "$PWD":/code -w /code \
+  -e HOME=/tmp \
+  -e COMPOSER_HOME=/tmp/composer \
+  -e COMPOSER_CACHE_DIR=/tmp/composer/cache \
+  -e COMPOSER_ALLOW_SUPERUSER=1 \
+  vanaboom/laravel-boomkit:base \
+  sh -lc '
+    mkdir -p "$COMPOSER_HOME" "$COMPOSER_CACHE_DIR" &&
+    composer require vanaboom/laravel-toolbox:dev-main --no-interaction --no-scripts &&
+    php artisan toolbox:publish-docker &&
+    chmod +x .docker/app/start-container
+  '
+```
+
 ---
 
 ## Configuration
@@ -35,7 +55,7 @@ The config file will be published to `config/toolbox.php`.
 
 * `mode` → `dev` or `prod`
 * `verbose_mode` → Enable verbose logging for starter command
-* `octan_watch` → Whether to enable Octane file watching in dev mode
+* `octane_watch` → Whether to enable Octane file watching in dev mode
 
 ---
 
@@ -54,8 +74,8 @@ The scaffold includes:
 * Dockerfile using `vanaboom/laravel-boomkit:base`
 * Supervisor configs:
 
-    * `starter` → Runs `php artisan toolbox:starter`
-    * Optional: `horizon`, `echo-server`, `scheduler` (copy from `.ini.example` to enable)
+  * `starter` → Runs `php artisan toolbox:starter`
+  * Optional: `horizon`, `echo-server`, `scheduler` (copy from `.ini.example` to enable)
 * Configurable environment variables for user/group IDs, app directory, custom commands, and more
 
 ### Example docker-compose service
@@ -69,11 +89,9 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-        APP_INSTALL_DIR: '/code'
         APP_ENV: ${APP_ENV:-production}
-        BUILD_TAG: ${BUILD_TAG:-boomrang}
+        BUILD_TAG: ${BUILD_TAG:-base}
     environment:
-      APP_INSTALL_DIR: '/code'
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}
       TOOLBOX_VERBOSE_MODE: ${TOOLBOX_VERBOSE_MODE:-false}

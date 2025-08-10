@@ -1,4 +1,4 @@
-FROM vanaboom/laravel-boomkit:base
+FROM vanaboom/laravel-boomkit:${BUILD_TAG:-prod}
 
 ARG WWWUSER
 ARG WWWGROUP
