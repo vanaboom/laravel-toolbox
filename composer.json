@@ -1,6 +1,8 @@
 {
     "name": "vanaboom/laravel-toolbox",
     "description": "Laravel toolbox",
+    "type": "library",
+    "license": "MIT",
     "keywords": [
         "vanaboom",
         "toolbox",

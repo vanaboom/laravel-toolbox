@@ -7,7 +7,7 @@ return [
     | Application environment mode that use for start
     |--------------------------------------------------------------------------
 
-    | Supported: "env", "prod"
+    | Supported: "dev", "prod"
     |
     */
 

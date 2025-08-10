@@ -1,0 +1,10 @@
+[program:echo-server]
+process_name=%(program_name)s_%(process_num)02d
+command=/usr/bin/env NODE_OPTIONS=--dns-result-order=ipv4first laravel-echo-server start --dir=%(ENV_APP_INSTALL_DIR)s
+autostart=true
+autorestart=true
+user=%(ENV_WWWUSER)s
+numprocs=1
+redirect_stderr=true
+stdout_logfile=%(ENV_APP_INSTALL_DIR)s/storage/logs/echo-server.log
+stopwaitsecs=3600

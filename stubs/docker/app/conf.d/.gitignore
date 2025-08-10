@@ -1,0 +1,4 @@
+*
+!php.ini
+!supervisord.conf
+!.gitignore

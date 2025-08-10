@@ -3,7 +3,8 @@
 namespace Vanaboom\Toolbox;
 
 use Illuminate\Support\ServiceProvider;
-
+use Vanaboom\Toolbox\Commands\StarterCommand;
+use Vanaboom\Toolbox\Commands\PublishDockerCommand;
 class ToolboxServiceProvider extends ServiceProvider
 {
     /**
@@ -19,20 +20,21 @@ class ToolboxServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->registerCommands();
-    }
+        $this->publishes([
+            __DIR__.'/../config/toolbox.php' => config_path('toolbox.php'),
+        ], 'toolbox-config');
 
-    /**
-     * Register package commands.
-     *
-     * @return void
-     */
-    private function registerCommands()
-    {
+        // publish docker scaffold
+        $this->publishes([
+            __DIR__.'/../stubs/docker' => base_path('.docker'),
+        ], 'toolbox-docker');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
-                Commands\StarterCommand::class,
+                StarterCommand::class,
+                PublishDockerCommand::class,
             ]);
         }
     }
+
 }

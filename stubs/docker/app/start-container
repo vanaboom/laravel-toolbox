@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+
+main() {
+    echo_block "Starting container..."
+
+    extra_configs
+    composer_warm_up || exit
+    composer_validate || exit
+    composer_diag
+    composer_install || exit
+    composer_check_platform_reqs || exit
+    laravel_warm_up || exit
+
+    echo_block "🎉 Application container is ready"
+
+    exec /usr/bin/supervisord -c /etc/supervisord.conf
+}
+
+extra_configs() {
+    if [[ "$TOOLBOX_VERBOSE_MODE" == true ]]; then
+        global_flags="--ansi --verbose"
+    else
+        global_flags="--ansi --quiet"
+    fi
+
+    [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" ] && cp "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" /usr/local/etc/php/conf.d/99-custom.ini
+}
+
+composer_warm_up() {
+    if [ -f "$COMPOSER_HOME/config.json" ]; then
+        echo '{}' > "$COMPOSER_HOME/config.json"
+    fi
+    composer config -g repositories.calix composer ${CUSTOM_REPO_URL}/composer/
+    composer config -g repo.packagist false
+
+    if [ ! -f "$COMPOSER_HOME/composer.json" ]; then
+        echo '{}' > "$COMPOSER_HOME/composer.json"
+    fi
+
+    # todo: use fallback if custom repo is not available
+    if [ ! -f "$COMPOSER_HOME/keys.dev.pub" ]; then
+        curl -sS ${CUSTOM_REPO_URL}/composer/keys/snapshots.pub -o "$COMPOSER_HOME/keys.dev.pub"
+    fi
+
+    if [ ! -f "$COMPOSER_HOME/keys.tags.pub" ]; then
+        curl -sS ${CUSTOM_REPO_URL}/composer/keys/releases.pub -o "$COMPOSER_HOME/keys.tags.pub"
+    fi
+
+    composer --version || return 1
+}
+
+composer_diag() {
+    echo_info "diagnosing composer..."
+
+    ping -c 1 8.8.8.8 > /dev/null 2>&1 || {
+        echo_warning "No internet connectivity, skipping composer diag"
+        return 0
+    }
+
+    composer diag $global_flags
+
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        return 1
+    elif [ $status -eq 1 ]; then
+        echo_warning "There was some warnings in composer diag"
+        return 0
+    elif [ $status -eq 2 ]; then
+        echo_fail "There was some errors in composer diag"
+        return 1
+    else
+        return 0
+    fi
+}
+
+composer_validate() {
+    echo_info "Validating composer..."
+    composer validate $global_flags || {
+        echo_info "Running composer update --lock"
+        if [[ "$TOOLBOX_STARTER_MODE" == "prod" ]]; then
+            composer update --no-dev $global_flags
+        else
+            composer update $global_flags
+        fi
+    }
+}
+
+composer_check_platform_reqs() {
+    echo_info "checking platform requirements..."
+    composer check-platform-reqs $global_flags || {
+        echo_fail "composer platform requirements are not satisfied"
+        return 1
+    }
+}
+
+composer_install() {
+    echo_info "installing composer dependencies..."
+    composer_install_flags="--no-interaction --no-progress --optimize-autoloader"
+    if [[ "$TOOLBOX_STARTER_MODE" == "prod" ]]; then
+        composer install --no-dev $composer_install_flags $global_flags
+    else
+        if [ -f "vendor/autoload.php" ]; then
+            composer install --dry-run --ansi
+            echo_warning "only dry run. do not forget to run 'composer install'"
+        else
+            composer install --no-interaction --optimize-autoloader $global_flags
+        fi
+    fi
+}
+
+laravel_warm_up() {
+    if ! php artisan --version --ansi; then
+        echo_fail "php artisan command failed"
+        return 1
+    else
+        evaluate_custom_commands
+
+        if [ "$TOOLBOX_STARTER_MODE" == "prod" ]; then
+            php artisan optimize:clear $global_flags
+            echo_success "laravel optimize was cleared"
+
+            php artisan optimize $global_flags
+            echo_success "laravel optimized"
+
+            cp /usr/local/bin/rr .
+
+            echo_block_prod "🚀 PRODUCTION MODE"
+
+        else
+            php artisan optimize:clear $global_flags
+            echo_success "laravel optimize was cleared"
+
+            echo_block "🛠️ DEVELOPMENT MODE"
+        fi
+    fi
+}
+
+evaluate_custom_commands () {
+    if [[ -n "$CUSTOM_COMMANDS" ]]; then
+        echo_block "Running custom commands..."
+        eval "$CUSTOM_COMMANDS"
+        echo_success "All custom commands evaluated"
+    fi
+}
+
+echo_block() {
+    printf "\n\e[44;37m %s \e[0m\n\n" "$@"
+}
+
+echo_block_prod() {
+    printf "\n\e[41;37m %s \e[0m\n\n" "$@"
+}
+
+echo_info() {
+    printf "\n\e[34mℹ  %s\e[0m\n" "$@"
+}
+
+echo_success() {
+    printf "\n\e[32m✔  %s\e[0m\n" "$@"
+}
+
+echo_warning() {
+    printf "\n\e[33m⚠  %s\e[0m\n" "$@"
+}
+
+echo_fail() {
+    printf "\n\e[31m✘  %s\e[0m\n" "$@"
+}
+
+if [ $# -gt 0 ]; then
+    exec "$@"
+else
+    main "$@"; exit
+fi
