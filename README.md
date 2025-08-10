@@ -26,17 +26,13 @@ docker run --rm -it \
   --add-host=host.docker.internal:host-gateway \
   -u $(id -u):$(id -g) \
   -v "$PWD":/code -w /code \
-  -e HOME=/tmp \
-  -e COMPOSER_HOME=/tmp/composer \
-  -e COMPOSER_CACHE_DIR=/tmp/composer/cache \
-  -e COMPOSER_ALLOW_SUPERUSER=1 \
-  vanaboom/laravel-boomkit:base \
+  vanaboom/laravel-boomkit:1.1 \
   sh -lc '
-    mkdir -p "$COMPOSER_HOME" "$COMPOSER_CACHE_DIR" &&
-    composer require vanaboom/laravel-toolbox:dev-main --no-interaction --no-scripts &&
+    composer require vanaboom/laravel-toolbox --no-interaction --no-scripts &&
     php artisan toolbox:publish-docker &&
     chmod +x .docker/app/start-container
   '
+
 ```
 
 ---
