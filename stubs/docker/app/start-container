@@ -26,6 +26,7 @@ bootstrap_env() {
     export COMPOSER_HOME="${COMPOSER_HOME:-$APP_INSTALL_DIR/.composer}"
     export COMPOSER_CACHE_DIR="${COMPOSER_CACHE_DIR:-$COMPOSER_HOME/cache}"
     mkdir -p "$COMPOSER_HOME" "$COMPOSER_CACHE_DIR"
+    mkdir -p "$COMPOSER_HOME/cache/files"
 
     # Verbosity flags
     if [[ "${TOOLBOX_VERBOSE_MODE:-false}" == true ]]; then
