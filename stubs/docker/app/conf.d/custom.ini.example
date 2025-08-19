@@ -7,3 +7,7 @@ opcache.revalidate_freq=0
 [Xdebug]
 xdebug.mode = develop,debug,coverage
 xdebug.client_host = host.docker.internal
+
+[apcu]
+apc.enabled = 0
+apc.enable_cli = 0
