@@ -37,15 +37,16 @@ bootstrap_env() {
 }
 
 extra_configs() {
-    # Project overrides
-    if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" ]; then
-        cp "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" /usr/local/etc/php/conf.d/99-custom.ini
+
+    if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" ]; then
+      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" /usr/local/etc/php/conf.d/98-php.ini
     fi
 
-    # Only create php.ini from example if real file is missing
-    if [ ! -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" ] && [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini.example" ]; then
-        cp "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini.example" "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini"
+    if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" ]; then
+      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" /usr/local/etc/php/conf.d/99-custom.ini
     fi
+
+
 }
 
 composer_warm_up() {

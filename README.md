@@ -91,9 +91,14 @@ services:
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}
       TOOLBOX_VERBOSE_MODE: ${TOOLBOX_VERBOSE_MODE:-false}
+    restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     ports:
       - ${APP_PORT:-11000}:8888
     volumes:
+      - ./.docker/app/conf.d/supervisord.conf:/etc/supervisord.conf
+      - ./.docker/app/supervisor.d:/etc/supervisor.d
       - ./:/code
     healthcheck:
       test: curl --fail -s http://localhost:8888/health || exit 1

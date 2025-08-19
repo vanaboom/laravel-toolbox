@@ -17,8 +17,7 @@ ARG APP_ENV='production'
 ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
     APP_ENV=${APP_ENV} \
     WWWUSER=${WWWUSER} \
-    WWWGROUP=${WWWGROUP} \
-    TZ=${APP_TIMEZONE}
+    WWWGROUP=${WWWGROUP}
 
 ENV HOME=${APP_INSTALL_DIR} \
     COMPOSER_HOME=${APP_INSTALL_DIR}/.composer \
@@ -31,6 +30,7 @@ WORKDIR ${APP_INSTALL_DIR}
 RUN mkdir -p "${COMPOSER_CACHE_DIR}" "${APP_INSTALL_DIR}" && \
     chown -R ${UID}:${GID} "${APP_INSTALL_DIR}"
 
+RUN chown -R ${UID}:${GID} /usr/local/etc/php/conf.d
 # Use bash with pipefail for reliable RUN steps
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -50,7 +50,6 @@ RUN set -Eeuo pipefail; \
     fi
 
 # ------- PHP & Supervisor config -------
-COPY conf.d/php.ini /usr/local/etc/php/conf.d/98-php.ini
 COPY conf.d/supervisord.conf /etc/supervisord.conf
 COPY supervisor.d/ /etc/supervisor.d/
 
