@@ -39,7 +39,11 @@ bootstrap_env() {
 extra_configs() {
 
     if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" ]; then
-      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" /usr/local/etc/php/conf.d/98-php.ini
+      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" /usr/local/etc/php/conf.d/97-php.ini
+    fi
+
+    if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "dev" ]]; then
+      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini.dev" /usr/local/etc/php/conf.d/98-custom.ini
     fi
 
     if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" ]; then
