@@ -4,6 +4,8 @@ FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
 
 # ---- Stage 1: App runtime based on boomkit ----
 FROM vanaboom/laravel-boomkit:base
+ARG BUILD_TAG=alpine
+FROM vanaboom/laravel-boomkit:${BUILD_TAG}-1.3 AS app
 
 # ------- Build args / envs -------
 ARG WWWUSER
@@ -12,7 +14,7 @@ ARG UID=1000
 ARG GID=1000
 ARG APP_INSTALL_DIR='/code'
 ARG APP_ENV='production'
-
+ARG BUILD_TAG=alpine
 # App & Composer envs (inside project)
 ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
     APP_ENV=${APP_ENV} \
@@ -48,6 +50,13 @@ RUN set -Eeuo pipefail; \
     else \
         useradd -m -u ${UID} -g ${GID} -s /bin/bash "${WWWUSER:-app}"; \
     fi
+
+
+RUN if [ "$BASE_VARIANT" = "alpine" ]; then \
+        echo "Do Alpine-specific stuff here"; \
+     else \
+        echo "Do Debian-specific stuff here"; \
+     fi
 
 # ------- PHP & Supervisor config -------
 COPY conf.d/supervisord.conf /etc/supervisord.conf
