@@ -1,11 +1,10 @@
 # ---- Stage 0: RoadRunner binary (stable via GHCR) ----
 ARG RR_VERSION=2025.1.0
-FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
+ARG BUILD_TAG=debian
 
+FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM vanaboom/laravel-boomkit:base
-ARG BUILD_TAG=alpine
-FROM vanaboom/laravel-boomkit:${BUILD_TAG}-1.3 AS app
+FROM vanaboom/laravel-boomkit:1.3-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG WWWUSER
@@ -14,7 +13,8 @@ ARG UID=1000
 ARG GID=1000
 ARG APP_INSTALL_DIR='/code'
 ARG APP_ENV='production'
-ARG BUILD_TAG=alpine
+ARG BUILD_TAG
+
 # App & Composer envs (inside project)
 ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
     APP_ENV=${APP_ENV} \
@@ -38,18 +38,34 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # ------- Align container user/group to host (for dev bind-mounts) -------
 RUN set -Eeuo pipefail; \
-    if getent group ${GID} >/dev/null; then \
-        groupmod -n "${WWWGROUP:-app}" "$(getent group ${GID} | cut -d: -f1)" || true; \
+    if [ "${BUILD_TAG}" = "alpine" ]; then \
+        # Alpine uses adduser/addgroup
+        if getent group ${GID} >/dev/null 2>&1; then \
+            echo "Group with GID ${GID} already exists"; \
+        else \
+            addgroup -g ${GID} "${WWWGROUP:-app}"; \
+        fi; \
+        if id -u ${UID} >/dev/null 2>&1; then \
+            echo "User with UID ${UID} already exists"; \
+        else \
+            adduser -D -u ${UID} -G "${WWWGROUP:-app}" -s /bin/bash "${WWWUSER:-app}"; \
+        fi; \
     else \
-        groupadd -g ${GID} "${WWWGROUP:-app}"; \
-    fi; \
-    if id -u ${UID} >/dev/null 2>&1; then \
-        usermod -l "${WWWUSER:-app}" "$(getent passwd ${UID} | cut -d: -f1)" || true; \
-        usermod -u ${UID} "${WWWUSER:-app}" || true; \
-        usermod -g ${GID} "${WWWUSER:-app}" || true; \
-    else \
-        useradd -m -u ${UID} -g ${GID} -s /bin/bash "${WWWUSER:-app}"; \
+        # Debian path
+        if getent group ${GID} >/dev/null; then \
+            groupmod -n "${WWWGROUP:-app}" "$(getent group ${GID} | cut -d: -f1)" || true; \
+        else \
+            groupadd -g ${GID} "${WWWGROUP:-app}"; \
+        fi; \
+        if id -u ${UID} >/dev/null 2>&1; then \
+            usermod -l "${WWWUSER:-app}" "$(getent passwd ${UID} | cut -d: -f1)" || true; \
+            usermod -u ${UID} "${WWWUSER:-app}" || true; \
+            usermod -g ${GID} "${WWWUSER:-app}" || true; \
+        else \
+            useradd -m -u ${UID} -g ${GID} -s /bin/bash "${WWWUSER:-app}"; \
+        fi; \
     fi
+
 
 
 RUN if [ "$BASE_VARIANT" = "alpine" ]; then \
