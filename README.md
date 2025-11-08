@@ -85,6 +85,8 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+        CURRENT_USER: ${CURRENT_USER}
+        CURRENT_GROUP: ${CURRENT_GROUP}
         APP_ENV: ${APP_ENV:-production}
         BUILD_TAG: ${BUILD_TAG:-base}
     environment:
