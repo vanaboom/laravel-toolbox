@@ -4,7 +4,7 @@ ARG BUILD_TAG=debian
 
 FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM vanaboom/laravel-boomkit:1.3-${BUILD_TAG} AS app
+FROM vanaboom/laravel-boomkit:1.4-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG WWWUSER
