@@ -89,6 +89,7 @@ services:
         CURRENT_GROUP: ${CURRENT_GROUP}
         APP_ENV: ${APP_ENV:-production}
         BUILD_TAG: ${BUILD_TAG:-base}
+        TIMEZONE: ${APP_TIMEZONE:-UTC}
     environment:
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}

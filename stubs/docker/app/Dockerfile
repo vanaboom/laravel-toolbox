@@ -14,6 +14,7 @@ ARG GID=1000
 ARG APP_INSTALL_DIR='/code'
 ARG APP_ENV='production'
 ARG BUILD_TAG
+ARG TIMEZONE='UTC'
 
 # App & Composer envs (inside project)
 ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
@@ -65,13 +66,6 @@ RUN set -Eeuo pipefail; \
     fi
 
 
-
-RUN if [ "$BASE_VARIANT" = "alpine" ]; then \
-        echo "Do Alpine-specific stuff here"; \
-     else \
-        echo "Do Debian-specific stuff here"; \
-     fi
-
 # ------- PHP & Supervisor config -------
 COPY conf.d/supervisord.conf /etc/supervisord.conf
 COPY supervisor.d/ /etc/supervisor.d/
@@ -83,6 +77,9 @@ RUN chmod +x /usr/local/bin/start-container
 # ------- RoadRunner (from rrstage) -------
 COPY --from=rrstage /usr/bin/rr /usr/local/bin/rr
 RUN rr --version
+
+RUN echo "${TIMEZONE}" > /etc/timezone; \
+    ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime \
 
 # ------- Runtime -------
 USER ${CURRENT_USER}
