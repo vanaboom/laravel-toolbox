@@ -26,7 +26,7 @@ docker run --rm -it \
   --add-host=host.docker.internal:host-gateway \
   -u $(id -u):$(id -g) \
   -v "$PWD":/code -w /code \
-  vanaboom/laravel-boomkit:1.3-alpine \
+  vanaboom/laravel-boomkit:1.4-alpine \
   sh -lc '
     composer require vanaboom/laravel-toolbox --no-interaction --no-scripts &&
     php artisan toolbox:publish-docker --force &&
