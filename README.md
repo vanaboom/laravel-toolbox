@@ -94,6 +94,7 @@ services:
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}
       TOOLBOX_VERBOSE_MODE: ${TOOLBOX_VERBOSE_MODE:-false}
+      TIMEZONE: ${APP_TIMEZONE:-UTC}
     restart: unless-stopped
     extra_hosts:
       - 'host.docker.internal:host-gateway'

@@ -14,13 +14,15 @@ ARG GID=1000
 ARG APP_INSTALL_DIR='/code'
 ARG APP_ENV='production'
 ARG BUILD_TAG
-ARG TIMEZONE='UTC'
-
+ARG TIMEZONE
+ENV TZ=${TIMEZONE}
+RUN echo ${TZ}
 # App & Composer envs (inside project)
 ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
     APP_ENV=${APP_ENV} \
     CURRENT_USER=${CURRENT_USER} \
     CURRENT_GROUP=${CURRENT_GROUP}
+
 
 ENV HOME=${APP_INSTALL_DIR} \
     COMPOSER_HOME=${APP_INSTALL_DIR}/.composer \
@@ -65,7 +67,6 @@ RUN set -Eeuo pipefail; \
         fi; \
     fi
 
-
 # ------- PHP & Supervisor config -------
 COPY conf.d/supervisord.conf /etc/supervisord.conf
 COPY supervisor.d/ /etc/supervisor.d/
@@ -78,8 +79,14 @@ RUN chmod +x /usr/local/bin/start-container
 COPY --from=rrstage /usr/bin/rr /usr/local/bin/rr
 RUN rr --version
 
-RUN echo "${TIMEZONE}" > /etc/timezone; \
-    ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime \
+RUN set -Eeuo pipefail; \
+    if [ "${BUILD_TAG}" = "alpine" ]; then \
+        cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
+        echo "${TIMEZONE}" > /etc/timezone; \
+    else \
+        ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
+        echo "${TIMEZONE}" > /etc/timezone; \
+    fi
 
 # ------- Runtime -------
 USER ${CURRENT_USER}
