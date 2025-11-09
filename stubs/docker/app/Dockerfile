@@ -5,7 +5,7 @@ ARG CUSTOM_REGISTRY
 
 FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.4-${BUILD_TAG} AS app
+FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.5-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG CURRENT_USER
