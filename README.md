@@ -90,6 +90,8 @@ services:
         APP_ENV: ${APP_ENV:-production}
         BUILD_TAG: ${BUILD_TAG:-base}
         TIMEZONE: ${APP_TIMEZONE:-UTC}
+        CUSTOM_REPO_URL: ${CUSTOM_REPO_URL:-https://repo.packagist.org}
+        CUSTOM_REGISTRY: ${CUSTOM_REGISTRY:-docker.io}
     environment:
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}
