@@ -32,8 +32,8 @@ docker run --rm -it \
     php artisan toolbox:publish-docker --force &&
     chmod +x .docker/app/start-container
   '
-
 ```
+Replace alpine with your `BUILD_TAG`
 
 ---
 

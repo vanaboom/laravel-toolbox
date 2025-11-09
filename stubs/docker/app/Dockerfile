@@ -41,7 +41,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # ------- Align container user/group to host (for dev bind-mounts) -------
 RUN set -Eeuo pipefail; \
-    if [ "${BUILD_TAG}" = "alpine" ]; then \
+    if [ -f /etc/alpine-release ]; then \
         if getent group ${GID} >/dev/null 2>&1; then \
             echo "Group with GID ${GID} already exists"; \
         else \
@@ -80,7 +80,7 @@ COPY --from=rrstage /usr/bin/rr /usr/local/bin/rr
 RUN rr --version
 
 RUN set -Eeuo pipefail; \
-    if [ "${BUILD_TAG}" = "alpine" ]; then \
+    if [ -f /etc/alpine-release ]; then \
         cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
         echo "${TIMEZONE}" > /etc/timezone; \
     else \
