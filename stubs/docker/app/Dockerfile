@@ -1,11 +1,11 @@
-# ---- Stage 0: RoadRunner binary (stable via GHCR) ----
-ARG RR_VERSION=2025.1.0
+# ---- Stage 0: RoadRunner binary ----
+ARG RR_VERSION=2025.1.4
 ARG BUILD_TAG=debian
 ARG CUSTOM_REGISTRY
 
-FROM ghcr.io/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
+FROM ${CUSTOM_REGISTRY:-docker.io}/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.5-${BUILD_TAG} AS app
+FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.6-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG CURRENT_USER
