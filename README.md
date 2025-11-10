@@ -88,7 +88,7 @@ services:
         CURRENT_USER: ${CURRENT_USER}
         CURRENT_GROUP: ${CURRENT_GROUP}
         APP_ENV: ${APP_ENV:-production}
-        BUILD_TAG: ${BUILD_TAG:-base}
+        BUILD_TAG: ${BUILD_TAG:-alpine}
         TIMEZONE: ${APP_TIMEZONE:-UTC}
         CUSTOM_REPO_URL: ${CUSTOM_REPO_URL:-https://repo.packagist.org}
         CUSTOM_REGISTRY: ${CUSTOM_REGISTRY:-docker.io}

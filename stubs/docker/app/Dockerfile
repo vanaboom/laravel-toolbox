@@ -3,7 +3,7 @@ ARG RR_VERSION=2025.1.4
 ARG BUILD_TAG=debian
 ARG CUSTOM_REGISTRY
 
-FROM ${CUSTOM_REGISTRY:-docker.io}/roadrunner-server/roadrunner:${RR_VERSION} AS rrstage
+FROM ${CUSTOM_REGISTRY:-docker.io}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
 FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.6-${BUILD_TAG} AS app
 
