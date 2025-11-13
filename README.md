@@ -26,7 +26,7 @@ docker run --rm -it \
   --add-host=host.docker.internal:host-gateway \
   -u $(id -u):$(id -g) \
   -v "$PWD":/code -w /code \
-  vanaboom/laravel-boomkit:1.6-alpine \
+  vanaboom/laravel-boomkit:1.7-alpine \
   sh -lc '
     composer require vanaboom/laravel-toolbox --no-interaction --no-scripts &&
     php artisan toolbox:publish-docker --force &&
@@ -67,7 +67,7 @@ php artisan toolbox:publish-docker
 
 The scaffold includes:
 
-* Dockerfile using `vanaboom/laravel-boomkit:1.6-alpine`
+* Dockerfile using `vanaboom/laravel-boomkit:1.7-alpine`
 * Supervisor configs:
 
   * `starter` → Runs `php artisan toolbox:starter`
