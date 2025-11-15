@@ -5,7 +5,7 @@ ARG DOCKER_REGISTRY
 
 FROM ${DOCKER_REGISTRY:-docker.io}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM ${DOCKER_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.7-${BUILD_TAG} AS app
+FROM ${DOCKER_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.8-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG CURRENT_USER
