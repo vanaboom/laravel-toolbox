@@ -1,11 +1,11 @@
 # ---- Stage 0: RoadRunner binary ----
 ARG RR_VERSION=2025.1.4
 ARG BUILD_TAG=debian
-ARG CUSTOM_REGISTRY
+ARG DOCKER_REGISTRY
 
-FROM ${CUSTOM_REGISTRY:-docker.io}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
+FROM ${DOCKER_REGISTRY:-docker.io}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM ${CUSTOM_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.7-${BUILD_TAG} AS app
+FROM ${DOCKER_REGISTRY:-docker.io}/vanaboom/laravel-boomkit:1.7-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG CURRENT_USER
@@ -28,13 +28,14 @@ ENV APP_INSTALL_DIR=${APP_INSTALL_DIR} \
 ENV HOME=${APP_INSTALL_DIR} \
     COMPOSER_HOME=${APP_INSTALL_DIR}/.composer \
     COMPOSER_CACHE_DIR=${APP_INSTALL_DIR}/.composer/cache \
+    SUPERVISOR_DIR=/tmp/supervisor \
     PATH=${APP_INSTALL_DIR}/vendor/bin:${APP_INSTALL_DIR}/.composer/vendor/bin:${PATH}
 
 WORKDIR ${APP_INSTALL_DIR}
 
 # Ensure composer dirs exist and are writable for target UID/GID
-RUN mkdir -p "${COMPOSER_CACHE_DIR}" "${APP_INSTALL_DIR}" && \
-    chown -R ${UID}:${GID} "${APP_INSTALL_DIR}"
+RUN mkdir -p "${COMPOSER_CACHE_DIR}" "${SUPERVISOR_DIR}" "${APP_INSTALL_DIR}" && \
+    chown -R ${UID}:${GID} "${APP_INSTALL_DIR}" "${SUPERVISOR_DIR}" "${COMPOSER_CACHE_DIR}"
 
 RUN chown -R ${UID}:${GID} /usr/local/etc/php/conf.d
 # Use bash with pipefail for reliable RUN steps

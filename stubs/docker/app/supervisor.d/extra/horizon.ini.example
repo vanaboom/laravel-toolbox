@@ -1,10 +1,21 @@
 [program:horizon]
-process_name = %(program_name)s_%(process_num)02d
-command = php %(ENV_APP_INSTALL_DIR)s/artisan horizon
+directory = %(ENV_APP_INSTALL_DIR)s
+
+command = php artisan horizon
+
 autostart = true
 autorestart = true
+startsecs = 3
+startretries = 5
+
 user = %(ENV_CURRENT_USER)s
-redirect_stderr = true
+
 loglevel = %(ENV_SUPERVISOR_LOG_LEVEL)s
+redirect_stderr = true
 stdout_logfile = %(ENV_APP_INSTALL_DIR)s/storage/logs/horizon.log
-stopwaitsecs = 3600
+
+priority = 10
+stopwaitsecs=300
+
+numprocs = 1
+process_name = %(program_name)s
