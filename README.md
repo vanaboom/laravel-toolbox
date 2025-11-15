@@ -16,7 +16,7 @@ A development toolkit for Laravel applications with built-in Docker scaffolding,
 ## Installation
 
 ```bash
-composer require vanaboom/laravel-toolbox --dev
+composer require vanaboom/laravel-toolbox
 ```
 
 Or, for the **first-time setup with Docker** (without Composer installed locally):
