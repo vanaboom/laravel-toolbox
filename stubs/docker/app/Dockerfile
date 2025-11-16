@@ -82,12 +82,20 @@ COPY --from=rrstage /usr/bin/rr /usr/local/bin/rr
 RUN rr --version
 
 RUN set -Eeuo pipefail; \
-    if [ -f /etc/alpine-release ]; then \
-        cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
-        echo "${TIMEZONE}" > /etc/timezone; \
+    if [ "${TIMEZONE:-UTC}" = "UTC" ] || [ "${TIMEZONE:-UTC}" = "Etc/UTC" ]; then \
+        echo "Timezone is UTC — skipping timezone configuration"; \
     else \
-        ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
-        echo "${TIMEZONE}" > /etc/timezone; \
+        if [ ! -f "/usr/share/zoneinfo/${TIMEZONE}" ]; then \
+            echo "Warning: /usr/share/zoneinfo/${TIMEZONE} not found" >&2; \
+        else \
+            if [ -f /etc/alpine-release ]; then \
+                cp "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
+                echo "${TIMEZONE}" > /etc/timezone; \
+            else \
+                ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime; \
+                echo "${TIMEZONE}" > /etc/timezone; \
+            fi; \
+        fi; \
     fi
 
 # ------- Runtime -------
