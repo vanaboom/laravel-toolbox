@@ -56,20 +56,20 @@ extra_configs() {
 composer_warm_up() {
     # Keep Packagist unless a COMPOSER_MIRROR_URL is explicitly provided
     if [ -n "${COMPOSER_MIRROR_URL:-}" ]; then
-        local base="${COMPOSER_MIRROR_URL%/}"
+        local base="${COMPOSER_MIRROR_URL}"
         composer config -g repositories.custom composer "${base}" || true
         composer config -g repo.packagist false || true
 
         # Optional public keys (best-effort)
-        [ -f "$COMPOSER_HOME/keys.dev.pub" ]  || curl -fsS "${base}/composer/keys/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
-        [ -f "$COMPOSER_HOME/keys.tags.pub" ] || curl -fsS "${base}/composer/keys/releases.pub"  -o "$COMPOSER_HOME/keys.tags.pub" || true
+        [ -f "$COMPOSER_HOME/keys.dev.pub" ]  || curl -fsS "${base}/keys/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
+        [ -f "$COMPOSER_HOME/keys.tags.pub" ] || curl -fsS "${base}/keys/releases.pub"  -o "$COMPOSER_HOME/keys.tags.pub" || true
     fi
 
     # Minimal files if missing (do NOT overwrite if exist)
     [ -f "$COMPOSER_HOME/config.json" ]   || echo '{}' > "$COMPOSER_HOME/config.json"
     [ -f "$COMPOSER_HOME/composer.json" ] || echo '{}' > "$COMPOSER_HOME/composer.json"
 
-    composer --version
+    echo_info "composer version: $(composer --version)"
 }
 npm_warm_up() {
     # Keep Packagist unless a COMPOSER_MIRROR_URL is explicitly provided
@@ -78,8 +78,8 @@ npm_warm_up() {
             npm config set registry "${base}"
     fi
 
-    npm config get registry
-    npm --version
+    echo_info "npm registry: $(npm config get registry)"
+    echo_info "npm version: $(npm --version)"
 }
 
 composer_diag() {
