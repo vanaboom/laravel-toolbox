@@ -59,6 +59,7 @@ composer_warm_up() {
         local base="${COMPOSER_MIRROR_URL}"
         composer config -g repositories.custom composer "${base}" || true
         composer config -g repo.packagist false || true
+        composer config -g secure-http false || true
 
         # Optional public keys (best-effort)
         [ -f "$COMPOSER_HOME/keys.dev.pub" ]  || curl -fsS "${base}/keys/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
