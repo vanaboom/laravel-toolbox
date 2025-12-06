@@ -6,6 +6,7 @@ main() {
 
     bootstrap_env
     extra_configs
+    composer_show_version || exit 1
     composer_warm_up || exit 1
     npm_warm_up || exit 1
     composer_validate || exit 1
@@ -29,28 +30,36 @@ bootstrap_env() {
     mkdir -p "$COMPOSER_HOME" "$COMPOSER_CACHE_DIR"
     mkdir -p "$COMPOSER_HOME/cache/files"
 
-    # Verbosity flags
-    if [[ "${TOOLBOX_VERBOSE_MODE:-false}" == true ]]; then
-        global_flags="--ansi --verbose"
-    else
-        global_flags="--ansi --quiet"
-    fi
+    global_flags="--ansi"
 }
 
 extra_configs() {
 
     if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" ]; then
-      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" /usr/local/etc/php/conf.d/97-php.ini
+        cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/php.ini" /usr/local/etc/php/conf.d/97-php.ini
     fi
 
     # Only copy dev custom.ini if the file actually exists
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "dev" ]] && [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini.dev" ]; then
-      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini.dev" /usr/local/etc/php/conf.d/98-custom.ini
+        cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini.dev" /usr/local/etc/php/conf.d/98-custom.ini
     fi
 
     if [ -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" ]; then
-      cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" /usr/local/etc/php/conf.d/99-custom.ini
+        cp -f "$APP_INSTALL_DIR/.docker/app/conf.d/custom.ini" /usr/local/etc/php/conf.d/99-custom.ini
     fi
+}
+
+composer_show_version() {
+    local out
+
+    if ! out="$(composer --version 2>&1)"; then
+        echo_fail "composer --version failed"
+        return 1
+    fi
+
+    while IFS= read -r line; do
+        [ -n "$line" ] && echo_info "$line"
+    done <<< "$out"
 }
 
 composer_warm_up() {
@@ -69,14 +78,12 @@ composer_warm_up() {
     # Minimal files if missing (do NOT overwrite if exist)
     [ -f "$COMPOSER_HOME/config.json" ]   || echo '{}' > "$COMPOSER_HOME/config.json"
     [ -f "$COMPOSER_HOME/composer.json" ] || echo '{}' > "$COMPOSER_HOME/composer.json"
-
-    echo_info "composer version: $(composer --version)"
 }
+
 npm_warm_up() {
-    # Keep Packagist unless a COMPOSER_MIRROR_URL is explicitly provided
     if [ -n "${NPM_MIRROR_URL:-}" ]; then
-            local base="${NPM_MIRROR_URL%/}"
-            npm config set registry "${base}"
+        local base="${NPM_MIRROR_URL%/}"
+        npm config set registry "${base}"
     fi
 
     echo_info "npm registry: $(npm config get registry)"
@@ -85,74 +92,121 @@ npm_warm_up() {
 
 composer_diag() {
     echo_info "diagnosing composer..."
+
     # If no internet, skip
     if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
         echo_warning "No internet connectivity, skipping composer diag"
         return 0
     fi
 
+    local diag_output
     # Composer diag returns non-zero on warnings; don't fail the container
-    if composer diag $global_flags; then
-        return 0
+    if diag_output="$(composer diag $global_flags 2>&1)"; then
+        echo_success "composer diag: OK"
     else
-        echo_warning "Composer diag reported issues"
-        return 0
+        echo_warning "composer diag reported issues:"
+        while IFS= read -r line; do
+            echo_warning "composer diag: $line"
+        done <<< "$diag_output"
     fi
+
+    return 0
 }
 
 composer_validate() {
     echo_info "Validating composer..."
-    if ! composer validate $global_flags; then
-        echo_info "Running composer update (to fix lock/metadata)"
-        if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
-            composer update --no-dev $global_flags
-        else
-            composer update $global_flags
-        fi
+    local out
+
+    if out="$(composer validate $global_flags 2>&1)"; then
+        echo_success "composer.json is valid"
+        return 0
+    fi
+
+    echo_warning "composer validate reported issues:"
+    printf '%s\n' "$out"
+
+    echo_info "Running composer update (to fix lock/metadata)"
+    if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
+        composer update --no-dev $global_flags
+    else
+        composer update $global_flags
     fi
 }
 
 composer_check_platform_reqs() {
     echo_info "checking platform requirements..."
-    if ! composer check-platform-reqs $global_flags; then
-        echo_fail "composer platform requirements are not satisfied"
-        return 1
+    local out
+
+    if out="$(composer check-platform-reqs $global_flags 2>&1)"; then
+        echo_success "composer platform requirements satisfied"
+        return 0
     fi
+
+    echo_fail "composer platform requirements are not satisfied"
+    printf '%s\n' "$out"
+    return 1
 }
 
 composer_install() {
     echo_info "installing composer dependencies..."
     local flags="--no-interaction --no-progress --optimize-autoloader"
+    local out
 
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
-        composer install --no-dev $flags $global_flags
+        if out="$(composer install --no-dev $flags $global_flags 2>&1)"; then
+            echo_success "composer dependencies installed (prod)"
+            return 0
+        fi
     else
         if [ -f "vendor/autoload.php" ]; then
-            composer install --dry-run $flags $global_flags
-            echo_warning "Only dry-run. Don't forget to run 'composer install'"
+            if out="$(composer install --dry-run $flags $global_flags 2>&1)"; then
+                echo_warning "Only dry-run. Don't forget to run 'composer install'"
+                echo_success "composer dry-run completed"
+                return 0
+            fi
         else
-            composer install $flags $global_flags
+            if out="$(composer install $flags $global_flags 2>&1)"; then
+                echo_success "composer dependencies installed"
+                return 0
+            fi
         fi
     fi
+
+    echo_fail "composer install failed"
+    printf '%s\n' "$out"
+    return 1
 }
 
 laravel_warm_up() {
-    if ! php artisan --version --ansi; then
+    local artisan_version out
+
+    if ! artisan_version="$(php artisan --version --ansi 2>&1)"; then
         echo_fail "php artisan command failed"
         return 1
     fi
 
+    echo_info "$artisan_version"
+
     evaluate_custom_commands
 
-    php artisan optimize:clear $global_flags || true
-    echo_success "laravel optimize was cleared"
+    if out="$(php artisan optimize:clear $global_flags 2>&1)"; then
+        echo_success "laravel optimize was cleared"
+    else
+        echo_warning "laravel optimize:clear failed (non-fatal)"
+        printf '%s\n' "$out"
+    fi
 
     if [ "${TOOLBOX_STARTER_MODE:-dev}" = "prod" ]; then
-        php artisan optimize $global_flags || true
-        echo_success "laravel optimized"
+        if out="$(php artisan optimize $global_flags 2>&1)"; then
+            echo_success "laravel optimized"
+        else
+            echo_warning "laravel optimize failed (non-fatal)"
+            printf '%s\n' "$out"
+        fi
+
         # Copy rr binary into project root (optional)
         cp /usr/local/bin/rr . 2>/dev/null || true
-        echo_block_prod "🚀 PRODUCTION MODE"
+        echo_block_prod "PRODUCTION MODE"
     else
         echo_block "DEVELOPMENT MODE"
     fi
@@ -166,11 +220,11 @@ evaluate_custom_commands () {
     fi
 }
 
-echo_block()      { printf "\n\e[44;37m %s \e[0m\n\n" "$@"; }
-echo_block_prod() { printf "\n\e[41;37m %s \e[0m\n\n" "$@"; }
-echo_info()       { printf "\n\e[34mℹ  %s\e[0m\n" "$@"; }
+echo_block()      { printf "\n\e[1;30;46m %s \e[0m\n\n" "$@"; }
+echo_block_prod() { printf "\n\e[1;97;41m %s \e[0m\n\n" "$@"; }
+echo_info()       { printf "\n\e[36mⓘ  %s\e[0m\n" "$@"; }
 echo_success()    { printf "\n\e[32m✔  %s\e[0m\n" "$@"; }
-echo_warning()    { printf "\n\e[33m⚠  %s\e[0m\n" "$@"; }
+echo_warning()    { printf "\n\e[36m⚠  %s\e[0m\n" "$@"; }
 echo_fail()       { printf "\n\e[31m✘  %s\e[0m\n" "$@"; }
 
 if [ $# -gt 0 ]; then
