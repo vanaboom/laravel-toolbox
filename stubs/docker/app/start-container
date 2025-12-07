@@ -8,11 +8,11 @@ main() {
     extra_configs
     composer_show_version || exit 1
     composer_warm_up || exit 1
-    npm_warm_up || exit 1
     composer_validate || exit 1
     composer_diag || true
     composer_install || exit 1
     composer_check_platform_reqs || exit 1
+    npm_warm_up || exit 1
     laravel_warm_up || exit 1
 
     echo_block "Application container is ready"
@@ -80,16 +80,6 @@ composer_warm_up() {
     [ -f "$COMPOSER_HOME/composer.json" ] || echo '{}' > "$COMPOSER_HOME/composer.json"
 }
 
-npm_warm_up() {
-    if [ -n "${NPM_MIRROR_URL:-}" ]; then
-        local base="${NPM_MIRROR_URL%/}"
-        npm config set registry "${base}"
-    fi
-
-    echo_info "npm registry: $(npm config get registry)"
-    echo_info "npm version: $(npm --version)"
-}
-
 composer_diag() {
     echo_info "diagnosing composer..."
 
@@ -149,32 +139,38 @@ composer_check_platform_reqs() {
 
 composer_install() {
     echo_info "installing composer dependencies..."
-    local flags="--no-interaction --no-progress --optimize-autoloader"
-    local out
+
+    local base_flags="--no-interaction --optimize-autoloader"
+    local verbose_flags="--ansi -vv"
 
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
-        if out="$(composer install --no-dev $flags $global_flags 2>&1)"; then
+        if composer install --no-dev $base_flags $verbose_flags; then
             echo_success "composer dependencies installed (prod)"
             return 0
+        else
+            echo_fail "composer install failed (prod)"
+            return 1
         fi
     else
         if [ -f "vendor/autoload.php" ]; then
-            if out="$(composer install --dry-run $flags $global_flags 2>&1)"; then
+            if composer install --dry-run $base_flags $verbose_flags; then
                 echo_warning "Only dry-run. Don't forget to run 'composer install'"
                 echo_success "composer dry-run completed"
                 return 0
+            else
+                echo_fail "composer install dry-run failed"
+                return 1
             fi
         else
-            if out="$(composer install $flags $global_flags 2>&1)"; then
+            if composer install $base_flags $verbose_flags; then
                 echo_success "composer dependencies installed"
                 return 0
+            else
+                echo_fail "composer install failed"
+                return 1
             fi
         fi
     fi
-
-    echo_fail "composer install failed"
-    printf '%s\n' "$out"
-    return 1
 }
 
 laravel_warm_up() {
@@ -210,6 +206,40 @@ laravel_warm_up() {
     else
         echo_block "DEVELOPMENT MODE"
     fi
+}
+
+npm_warm_up() {
+    if [ ! -f package.json ]; then
+        echo_warning "package.json not found, skipping npm install/build"
+        return 0
+    fi
+
+    if [ -n "${NPM_MIRROR_URL:-}" ]; then
+        local base="${NPM_MIRROR_URL%/}"
+        npm config set registry "${base}"
+    fi
+
+    echo_info "npm registry: $(npm config get registry)"
+    echo_info "npm version: $(npm --version)"
+
+    echo_info "npm install"
+    if ! npm install; then
+        echo_fail "npm install failed"
+        return 1
+    fi
+    echo_success "npm install completed"
+
+    echo_info "npm run build"
+    local build_output
+    if build_output="$(npm run build 2>&1)"; then
+        echo_success "npm run build completed"
+    else
+        echo_fail "npm run build failed"
+        printf '%s\n' "$build_output"
+        return 1
+    fi
+
+    return 0
 }
 
 evaluate_custom_commands () {
