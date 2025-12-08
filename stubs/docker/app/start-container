@@ -9,6 +9,7 @@ main() {
     composer_show_version || exit 1
     composer_warm_up || exit 1
     composer_validate || exit 1
+    composer_update_keys || true
     composer_diag || true
     composer_install || exit 1
     composer_check_platform_reqs || exit 1
@@ -63,22 +64,53 @@ composer_show_version() {
 }
 
 composer_warm_up() {
+    # Minimal files if missing
+    [ -f "$COMPOSER_HOME/config.json" ]   || echo '{}' > "$COMPOSER_HOME/config.json"
+    [ -f "$COMPOSER_HOME/composer.json" ] || echo '{}' > "$COMPOSER_HOME/composer.json"
+
     # Keep Packagist unless a COMPOSER_MIRROR_URL is explicitly provided
     if [ -n "${COMPOSER_MIRROR_URL:-}" ]; then
         local base="${COMPOSER_MIRROR_URL}"
         composer config -g repositories.custom composer "${base}" || true
         composer config -g repo.packagist false || true
-        composer config -g secure-http false || true
+    fi
+}
 
-        # Optional public keys (best-effort)
-        [ -f "$COMPOSER_HOME/keys.dev.pub" ]  || curl -fsS "${base}/keys/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
-        [ -f "$COMPOSER_HOME/keys.tags.pub" ] || curl -fsS "${base}/keys/releases.pub"  -o "$COMPOSER_HOME/keys.tags.pub" || true
+composer_validate() {
+    echo_info "Validating composer..."
+    local out
+
+    if out="$(composer validate $global_flags 2>&1)"; then
+        echo_success "composer.json is valid"
+        return 0
     fi
 
-    # Minimal files if missing (do NOT overwrite if exist)
-    [ -f "$COMPOSER_HOME/config.json" ]   || echo '{}' > "$COMPOSER_HOME/config.json"
-    [ -f "$COMPOSER_HOME/composer.json" ] || echo '{}' > "$COMPOSER_HOME/composer.json"
+    echo_warning "composer validate reported issues:"
+    printf '%s\n' "$out"
+
+    echo_info "Running composer update (to fix lock/metadata)"
+    if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
+        composer update --no-dev $global_flags
+    else
+        composer update $global_flags
+    fi
 }
+
+composer_update_keys() {
+    if [[ ! -f "$COMPOSER_HOME/keys.dev.pub" || ! -f "$COMPOSER_HOME/keys.tags.pub" ]]; then
+        echo_info "Updating Composer GPG keys..."
+
+        if [[ -n "${COMPOSER_GITHUB_URL:-}" ]]; then
+            base="${COMPOSER_GITHUB_URL%/}"
+        else
+            base="https://composer.github.io"
+        fi
+
+        curl -fsS "${base}/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
+        curl -fsS "${base}/releases.pub"  -o "$COMPOSER_HOME/keys.tags.pub" || true
+    fi
+}
+
 
 composer_diag() {
     echo_info "diagnosing composer..."
@@ -103,26 +135,6 @@ composer_diag() {
     return 0
 }
 
-composer_validate() {
-    echo_info "Validating composer..."
-    local out
-
-    if out="$(composer validate $global_flags 2>&1)"; then
-        echo_success "composer.json is valid"
-        return 0
-    fi
-
-    echo_warning "composer validate reported issues:"
-    printf '%s\n' "$out"
-
-    echo_info "Running composer update (to fix lock/metadata)"
-    if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
-        composer update --no-dev $global_flags
-    else
-        composer update $global_flags
-    fi
-}
-
 composer_check_platform_reqs() {
     echo_info "checking platform requirements..."
     local out
@@ -140,11 +152,9 @@ composer_check_platform_reqs() {
 composer_install() {
     echo_info "installing composer dependencies..."
 
-    local base_flags="--no-interaction --optimize-autoloader"
-    local verbose_flags="--ansi -vv"
-
+    local base_flags="--ansi --no-interaction --optimize-autoloader"
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
-        if composer install --no-dev $base_flags $verbose_flags; then
+        if composer install --no-dev $base_flags; then
             echo_success "composer dependencies installed (prod)"
             return 0
         else
@@ -153,7 +163,7 @@ composer_install() {
         fi
     else
         if [ -f "vendor/autoload.php" ]; then
-            if composer install --dry-run $base_flags $verbose_flags; then
+            if composer install --dry-run $base_flags; then
                 echo_warning "Only dry-run. Don't forget to run 'composer install'"
                 echo_success "composer dry-run completed"
                 return 0
@@ -162,7 +172,7 @@ composer_install() {
                 return 1
             fi
         else
-            if composer install $base_flags $verbose_flags; then
+            if composer install $base_flags; then
                 echo_success "composer dependencies installed"
                 return 0
             else
@@ -222,17 +232,29 @@ npm_warm_up() {
     echo_info "npm registry: $(npm config get registry)"
     echo_info "npm version: $(npm --version)"
 
-    echo_info "npm install"
-    if ! npm install; then
+    echo_info "npm install (this may take a while...)"
+    local npm_log="${APP_INSTALL_DIR:-.}/.npm-install.log"
+    : >"$npm_log"
+
+    if npm install --no-progress --loglevel=error >"$npm_log" 2>&1; then
+        echo_success "npm install completed"
+        rm -f "$npm_log" || true
+    else
         echo_fail "npm install failed"
+        printf '%s\n' "----- npm install output -----"
+        cat "$npm_log"
         return 1
     fi
-    echo_success "npm install completed"
 
     echo_info "npm run build"
     local build_output
     if build_output="$(npm run build 2>&1)"; then
         echo_success "npm run build completed"
+
+        if [ -d node_modules ]; then
+            echo_info "Cleaning node_modules after build"
+            rm -rf node_modules
+        fi
     else
         echo_fail "npm run build failed"
         printf '%s\n' "$build_output"
