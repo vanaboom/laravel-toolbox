@@ -113,6 +113,10 @@ composer_update_keys() {
 
 
 composer_diag() {
+    [[ "${COMPOSER_DIAG_ENABLED:-1}" =~ ^(1|true|yes|on)$ ]] || {
+        echo_info "composer diag: disabled (COMPOSER_DIAG_ENABLED=${COMPOSER_DIAG_ENABLED-<unset>})"
+        return 0
+    }
     echo_info "diagnosing composer..."
 
     # If no internet, skip
