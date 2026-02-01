@@ -26,7 +26,7 @@ docker run --rm -it \
   --add-host=host.docker.internal:host-gateway \
   -u $(id -u):$(id -g) \
   -v "$PWD":/code -w /code \
-  vanaboom/laravel-boomkit:1.8-alpine \
+  vanaboom/laravel-boomkit:1.10.2-alpine \
   sh -lc '
     composer require vanaboom/laravel-toolbox --no-interaction --no-scripts &&
     php artisan toolbox:publish-docker --force &&
@@ -67,12 +67,18 @@ php artisan toolbox:publish-docker
 
 The scaffold includes:
 
-* Dockerfile using `vanaboom/laravel-boomkit:1.8-alpine`
+* Dockerfile using `vanaboom/laravel-boomkit:1.10.2-alpine`
 * Supervisor configs:
 
   * `starter` → Runs `php artisan toolbox:starter`
   * Optional: `horizon`, `echo-server`, `scheduler` (copy from `.ini.example` to enable)
 * Configurable environment variables for user/group IDs, app directory, custom commands, and more
+
+To avoid Composer re-running on every container start, add stamp files to your `.gitignore`:
+
+```
+*.stamp
+```
 
 ### Example docker-compose service
 

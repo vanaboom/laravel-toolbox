@@ -89,6 +89,10 @@ composer_validate() {
     printf '%s\n' "$out"
 
     echo_info "Running composer update (to fix lock/metadata)"
+    if ! composer_repo_available; then
+        echo_warning "composer repository is not reachable, skipping update"
+        return 0
+    fi
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
         composer update --no-dev $global_flags
     else
@@ -97,6 +101,11 @@ composer_validate() {
 }
 
 composer_update_keys() {
+    if ! composer_install_needed; then
+        echo_info "composer dependencies are up to date, skipping GPG key update"
+        return 0
+    fi
+
     if [[ ! -f "$COMPOSER_HOME/keys.dev.pub" || ! -f "$COMPOSER_HOME/keys.tags.pub" ]]; then
         echo_info "Updating Composer GPG keys..."
 
@@ -106,6 +115,11 @@ composer_update_keys() {
             base="https://composer.github.io"
         fi
 
+        if ! url_is_reachable "${base}"; then
+            echo_warning "Composer key host is not reachable, skipping key update"
+            return 0
+        fi
+
         curl -fsS "${base}/snapshots.pub" -o "$COMPOSER_HOME/keys.dev.pub"  || true
         curl -fsS "${base}/releases.pub"  -o "$COMPOSER_HOME/keys.tags.pub" || true
     fi
@@ -113,15 +127,11 @@ composer_update_keys() {
 
 
 composer_diag() {
-    [[ "${COMPOSER_DIAG_ENABLED:-1}" =~ ^(1|true|yes|on)$ ]] || {
-        echo_info "composer diag: disabled (COMPOSER_DIAG_ENABLED=${COMPOSER_DIAG_ENABLED-<unset>})"
-        return 0
-    }
     echo_info "diagnosing composer..."
 
-    # If no internet, skip
-    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
-        echo_warning "No internet connectivity, skipping composer diag"
+    # If composer repository is not reachable, skip
+    if ! composer_repo_available; then
+        echo_warning "composer repository is not reachable, skipping composer diag"
         return 0
     fi
 
@@ -153,36 +163,128 @@ composer_check_platform_reqs() {
     return 1
 }
 
+hash_files() {
+    local hasher
+    local files=("$@")
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        hasher="sha256sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        hasher="shasum -a 256"
+    else
+        echo ""
+        return 0
+    fi
+
+    if [ "${#files[@]}" -eq 0 ]; then
+        echo ""
+        return 0
+    fi
+
+    local combined
+    combined="$($hasher "${files[@]}" 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+    printf '%s' "$combined" | $hasher | awk '{print $1}'
+}
+
+composer_state_hash() {
+    local files=()
+    [ -f "composer.json" ] && files+=("composer.json")
+    [ -f "composer.lock" ] && files+=("composer.lock")
+    hash_files "${files[@]}"
+}
+
+composer_install_needed() {
+    if [ ! -f "composer.json" ]; then
+        return 1
+    fi
+    if [ ! -f "composer.lock" ]; then
+        return 0
+    fi
+    if [ ! -f "vendor/autoload.php" ]; then
+        return 0
+    fi
+
+    local stamp="${APP_INSTALL_DIR:-.}/.composer-install.stamp"
+    local hash prev
+    hash="$(composer_state_hash)"
+    if [ -n "$hash" ] && [ -f "$stamp" ]; then
+        prev="$(cat "$stamp" 2>/dev/null || true)"
+        if [ "$hash" = "$prev" ]; then
+            return 1
+        fi
+    fi
+
+    if [ "composer.lock" -nt "vendor/autoload.php" ] || [ "composer.json" -nt "vendor/autoload.php" ]; then
+        return 0
+    fi
+
+    if [ -n "$hash" ]; then
+        printf '%s' "$hash" > "$stamp"
+    fi
+
+    return 1
+}
+
+npm_state_hash() {
+    local files=()
+    [ -f "package.json" ] && files+=("package.json")
+    [ -f "package-lock.json" ] && files+=("package-lock.json")
+    [ -f "npm-shrinkwrap.json" ] && files+=("npm-shrinkwrap.json")
+    hash_files "${files[@]}"
+}
+
+npm_build_needed() {
+    local stamp="${APP_INSTALL_DIR:-.}/.npm-build.stamp"
+    local hash
+    hash="$(npm_state_hash)"
+    if [ -z "$hash" ]; then
+        return 0
+    fi
+    if [ ! -f "$stamp" ]; then
+        return 0
+    fi
+    local prev
+    prev="$(cat "$stamp" 2>/dev/null || true)"
+    if [ "$hash" != "$prev" ]; then
+        return 0
+    fi
+    return 1
+}
+
 composer_install() {
     echo_info "installing composer dependencies..."
 
+    if ! composer_repo_available; then
+        echo_warning "composer repository is not reachable, skipping install"
+        return 0
+    fi
+
     local base_flags="--ansi --no-interaction --optimize-autoloader"
     if [[ "${TOOLBOX_STARTER_MODE:-dev}" == "prod" ]]; then
+        if ! composer_install_needed; then
+            echo_success "composer dependencies are up to date, skipping install"
+            return 0
+        fi
         if composer install --no-dev $base_flags; then
             echo_success "composer dependencies installed (prod)"
+            composer_state_hash > "${APP_INSTALL_DIR:-.}/.composer-install.stamp" || true
             return 0
         else
             echo_fail "composer install failed (prod)"
             return 1
         fi
     else
-        if [ -f "vendor/autoload.php" ]; then
-            if composer install --dry-run $base_flags; then
-                echo_warning "Only dry-run. Don't forget to run 'composer install'"
-                echo_success "composer dry-run completed"
-                return 0
-            else
-                echo_fail "composer install dry-run failed"
-                return 1
-            fi
+        if ! composer_install_needed; then
+            echo_success "composer dependencies are up to date, skipping install"
+            return 0
+        fi
+        if composer install $base_flags; then
+            echo_success "composer dependencies installed"
+            composer_state_hash > "${APP_INSTALL_DIR:-.}/.composer-install.stamp" || true
+            return 0
         else
-            if composer install $base_flags; then
-                echo_success "composer dependencies installed"
-                return 0
-            else
-                echo_fail "composer install failed"
-                return 1
-            fi
+            echo_fail "composer install failed"
+            return 1
         fi
     fi
 }
@@ -228,6 +330,11 @@ npm_warm_up() {
         return 0
     fi
 
+    if ! npm_build_needed; then
+        echo_success "npm dependencies/build are up to date, skipping install/build"
+        return 0
+    fi
+
     if [ -n "${NPM_MIRROR_URL:-}" ]; then
         local base="${NPM_MIRROR_URL%/}"
         npm config set registry "${base}"
@@ -239,6 +346,11 @@ npm_warm_up() {
     echo_info "npm install (this may take a while...)"
     local npm_log="${APP_INSTALL_DIR:-.}/.npm-install.log"
     : >"$npm_log"
+
+    if ! npm_registry_available; then
+        echo_warning "npm registry is not reachable, skipping install/build"
+        return 0
+    fi
 
     if npm install --no-progress --loglevel=error >"$npm_log" 2>&1; then
         echo_success "npm install completed"
@@ -254,6 +366,7 @@ npm_warm_up() {
     local build_output
     if build_output="$(npm run build 2>&1)"; then
         echo_success "npm run build completed"
+        npm_state_hash > "${APP_INSTALL_DIR:-.}/.npm-build.stamp" || true
 
         if [ -d node_modules ]; then
             echo_info "Cleaning node_modules after build"
@@ -274,6 +387,43 @@ evaluate_custom_commands () {
         eval "${CUSTOM_COMMANDS}"
         echo_success "All custom commands evaluated"
     fi
+}
+
+url_is_reachable() {
+    local url="$1"
+
+    if curl -fsS --head --max-time 5 "$url" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if curl -fsS --max-time 5 "$url" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    return 1
+}
+
+composer_repo_available() {
+    local base
+
+    if [ -n "${COMPOSER_MIRROR_URL:-}" ]; then
+        base="${COMPOSER_MIRROR_URL%/}"
+    else
+        base="https://repo.packagist.org"
+    fi
+
+    echo_info "checking composer repository: ${base}"
+    url_is_reachable "${base}"
+}
+
+npm_registry_available() {
+    local registry
+
+    registry="$(npm config get registry)"
+    registry="${registry%/}"
+
+    echo_info "checking npm registry: ${registry}"
+    url_is_reachable "${registry}"
 }
 
 echo_block()      { printf "\n\e[1;30;46m %s \e[0m\n\n" "$@"; }
