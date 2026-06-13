@@ -1,11 +1,12 @@
 # ---- Stage 0: RoadRunner binary ----
 ARG RR_VERSION=2025.1.4
 ARG BUILD_TAG=debian
-ARG DOCKER_REGISTRY
+ARG DOCKER_REGISTRY=docker.io
+ARG BOOMKIT_VERSION=1.10.2
 
-FROM ${DOCKER_REGISTRY:-docker.io}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
+FROM ${DOCKER_REGISTRY}/spiralscout/roadrunner:${RR_VERSION} AS rrstage
 # ---- Stage 1: App runtime based on boomkit ----
-FROM vanaboom/laravel-boomkit:1.10.2-${BUILD_TAG} AS app
+FROM ${DOCKER_REGISTRY}/vanaboom/laravel-boomkit:${BOOMKIT_VERSION}-${BUILD_TAG} AS app
 
 # ------- Build args / envs -------
 ARG CURRENT_USER

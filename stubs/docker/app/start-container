@@ -15,6 +15,7 @@ main() {
     composer_check_platform_reqs || exit 1
     npm_warm_up || exit 1
     laravel_warm_up || exit 1
+    prepare_octane_binary
 
     echo_block "Application container is ready"
     exec /usr/bin/supervisord -c /etc/supervisord.conf
@@ -32,6 +33,27 @@ bootstrap_env() {
     mkdir -p "$COMPOSER_HOME/cache/files"
 
     global_flags="--ansi"
+}
+
+project_env_value() {
+    local key="$1"
+    local default_value="${2:-}"
+    local line value
+
+    if [ -f "$APP_INSTALL_DIR/.env" ]; then
+        line="$(grep -E "^${key}=" "$APP_INSTALL_DIR/.env" | tail -n 1 || true)"
+        if [ -n "$line" ]; then
+            value="${line#*=}"
+            value="${value%\"}"
+            value="${value#\"}"
+            value="${value%\'}"
+            value="${value#\'}"
+            printf '%s' "$value"
+            return 0
+        fi
+    fi
+
+    printf '%s' "$default_value"
 }
 
 extra_configs() {
@@ -316,12 +338,43 @@ laravel_warm_up() {
             printf '%s\n' "$out"
         fi
 
-        # Copy rr binary into project root (optional)
-        cp /usr/local/bin/rr . 2>/dev/null || true
         echo_block_prod "PRODUCTION MODE"
     else
         echo_block "DEVELOPMENT MODE"
     fi
+}
+
+prepare_octane_binary() {
+    if [ "${TOOLBOX_STARTER_MODE:-dev}" != "prod" ]; then
+        return 0
+    fi
+
+    local octane_server
+    octane_server="${OCTANE_SERVER:-$(project_env_value OCTANE_SERVER roadrunner)}"
+
+    case "$octane_server" in
+        frankenphp)
+            if [ ! -x /usr/local/bin/frankenphp ]; then
+                echo_warning "FrankenPHP binary not found at /usr/local/bin/frankenphp"
+                return 0
+            fi
+            cp -f /usr/local/bin/frankenphp "$APP_INSTALL_DIR/frankenphp"
+            chmod 0755 "$APP_INSTALL_DIR/frankenphp"
+            echo_success "FrankenPHP binary prepared"
+            ;;
+        roadrunner)
+            if [ ! -x /usr/local/bin/rr ]; then
+                echo_warning "RoadRunner binary not found at /usr/local/bin/rr"
+                return 0
+            fi
+            cp -f /usr/local/bin/rr "$APP_INSTALL_DIR/rr"
+            chmod 0755 "$APP_INSTALL_DIR/rr"
+            echo_success "RoadRunner binary prepared"
+            ;;
+        *)
+            echo_info "No project binary preparation needed for OCTANE_SERVER=${octane_server}"
+            ;;
+    esac
 }
 
 npm_warm_up() {

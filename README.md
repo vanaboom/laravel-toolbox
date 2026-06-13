@@ -4,12 +4,12 @@ A development toolkit for Laravel applications with built-in Docker scaffolding,
 
 ## Features
 
-* Laravel Octane + RoadRunner ready
+* Laravel Octane ready with RoadRunner by default and optional FrankenPHP support
 * Preconfigured Supervisor process management
 * Optional service configs for Horizon, Echo Server, Scheduler
 * Environment-based starter mode (`dev` or `prod`)
 * Ready-to-publish Docker scaffold for rapid project setup
-* Works seamlessly with the public base image [`vanaboom/laravel-boomkit:base`](https://hub.docker.com/r/vanaboom/laravel-boomkit)
+* Works seamlessly with the public base image [`vanaboom/laravel-boomkit`](https://hub.docker.com/r/vanaboom/laravel-boomkit)
 
 ---
 
@@ -33,7 +33,7 @@ docker run --rm -it \
     chmod +x .docker/app/start-container
   '
 ```
-Replace alpine with your `BUILD_TAG`
+Replace `alpine` with your `BUILD_TAG`, or use `alpine-frankenphp` together with `OCTANE_SERVER=frankenphp`.
 
 ---
 
@@ -67,12 +67,12 @@ php artisan toolbox:publish-docker
 
 The scaffold includes:
 
-* Dockerfile using `vanaboom/laravel-boomkit:1.10.2-alpine`
+* Dockerfile using `vanaboom/laravel-boomkit:${BOOMKIT_VERSION}-${BUILD_TAG}`
 * Supervisor configs:
 
   * `starter` → Runs `php artisan toolbox:starter`
   * Optional: `horizon`, `echo-server`, `scheduler` (copy from `.ini.example` to enable)
-* Configurable environment variables for user/group IDs, app directory, custom commands, and more
+* Configurable environment variables for user/group IDs, app directory, custom commands, Octane runtime, Docker registry mirror, and more
 
 To avoid Composer re-running on every container start, add stamp files to your `.gitignore`:
 
@@ -94,6 +94,7 @@ services:
         CURRENT_USER: ${CURRENT_USER}
         CURRENT_GROUP: ${CURRENT_GROUP}
         APP_ENV: ${APP_ENV:-production}
+        BOOMKIT_VERSION: ${BOOMKIT_VERSION:-1.10.2}
         BUILD_TAG: ${BUILD_TAG:-alpine}
         TIMEZONE: ${APP_TIMEZONE:-UTC}
         DOCKER_REGISTRY: ${DOCKER_REGISTRY:-docker.io}
@@ -101,6 +102,7 @@ services:
       COMPOSER_MEMORY_LIMIT: -1
       TOOLBOX_STARTER_MODE: ${TOOLBOX_STARTER_MODE:-dev}
       TOOLBOX_VERBOSE_MODE: ${TOOLBOX_VERBOSE_MODE:-false}
+      OCTANE_SERVER: ${OCTANE_SERVER:-roadrunner}
       TIMEZONE: ${APP_TIMEZONE:-UTC}
       COMPOSER_MIRROR_URL: ${COMPOSER_MIRROR_URL:-https://repo.packagist.org/}
       NPM_MIRROR_URL: ${NPM_MIRROR_URL:-https://registry.npmjs.org/}
@@ -119,6 +121,19 @@ services:
       timeout: 30s
       retries: 3
 ```
+
+---
+
+### Octane Runtime
+
+RoadRunner remains the default runtime for backward compatibility. To use FrankenPHP, build with the Boomkit FrankenPHP tag and set the Octane server explicitly:
+
+```env
+BUILD_TAG=alpine-frankenphp
+OCTANE_SERVER=frankenphp
+```
+
+For registries or Docker Hub mirrors, set `DOCKER_REGISTRY` to the mirror prefix used by your environment.
 
 ---
 
